@@ -52,6 +52,14 @@
     {
       "message": "HII may refer to:<br><img src=\"https://via.placeholder.com/150?text=hii\" alt=\"hii\" class=\"w-32 rounded\" onerror=\"handleImageError(this)\">",
       "isUser": false
+    },
+    {
+      "message": "hii",
+      "isUser": true
+    },
+    {
+      "message": "hh",
+      "isUser": false
     }
   ]
 }
