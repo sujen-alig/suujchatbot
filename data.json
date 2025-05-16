@@ -1,5 +1,10 @@
 {
-  "users": {},
+  "users": {
+    "11": {
+      "username": "11",
+      "password": "11"
+    }
+  },
   "trainingData": [
     {
       "question": "What is JavaScript?",
