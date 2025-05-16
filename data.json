@@ -1,41 +1,50 @@
 {
-    "users": {},
-    "trainingData": [
-        {
-            "question": "What is JavaScript?",
-            "answer": "JavaScript is a programming language for dynamic web content.",
-            "image": "",
-            "link": "https://developer.mozilla.org/en-US/docs/Web/JavaScript",
-            "file": null
-        },
-        {
-            "question": "Prime Minister of India",
-            "answer": "Narendra Modi is the Prime Minister of India.",
-            "image": "https://via.placeholder.com/150?text=PM",
-            "link": "",
-            "file": null
-        },
-        {
-            "question": "1+1",
-            "answer": "2",
-            "image": "",
-            "link": "",
-            "file": null
-        },
-        {
-            "question": "Translate hello to Spanish",
-            "answer": "Hola",
-            "image": "",
-            "link": "",
-            "file": null
-        },
-        {
-            "question": "Weather in Delhi",
-            "answer": "Check current weather in Delhi.",
-            "image": "",
-            "link": "",
-            "file": null
-        }
-    ],
-    "chats": []
+  "users": {},
+  "trainingData": [
+    {
+      "question": "What is JavaScript?",
+      "answer": "JavaScript is a programming language for dynamic web content.",
+      "image": "",
+      "link": "https://developer.mozilla.org/en-US/docs/Web/JavaScript",
+      "file": null
+    },
+    {
+      "question": "Prime Minister of India",
+      "answer": "Narendra Modi is the Prime Minister of India.",
+      "image": "https://via.placeholder.com/150?text=PM",
+      "link": "",
+      "file": null
+    },
+    {
+      "question": "1+1",
+      "answer": "2",
+      "image": "",
+      "link": "",
+      "file": null
+    },
+    {
+      "question": "Translate hello to Spanish",
+      "answer": "Hola",
+      "image": "",
+      "link": "",
+      "file": null
+    },
+    {
+      "question": "Weather in Delhi",
+      "answer": "Check current weather in Delhi.",
+      "image": "",
+      "link": "",
+      "file": null
+    }
+  ],
+  "chats": [
+    {
+      "message": "hii",
+      "isUser": true
+    },
+    {
+      "message": "HII may refer to:<br><img src=\"https://via.placeholder.com/150?text=hii\" alt=\"hii\" class=\"w-32 rounded\" onerror=\"handleImageError(this)\">",
+      "isUser": false
+    }
+  ]
 }
