@@ -60,6 +60,14 @@
     {
       "message": "hh",
       "isUser": false
+    },
+    {
+      "message": "hi",
+      "isUser": true
+    },
+    {
+      "message": "HI or Hi may refer to:<br><img src=\"https://via.placeholder.com/150?text=hi\" alt=\"hi\" class=\"w-32 rounded\" onerror=\"handleImageError(this)\">",
+      "isUser": false
     }
   ]
 }
