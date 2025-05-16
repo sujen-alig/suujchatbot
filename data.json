@@ -1,55 +1,41 @@
 {
-  "users": {
-    "admin": {
-      "username": "admin",
-      "password": "admin123"
-    },
-    "guest": {
-      "username": "guest",
-      "password": "guest123"
-    }
-  },
-  "trainingData": [
-    {
-      "question": "What is 1 + 1?",
-      "answer": "2",
-      "image": null,
-      "link": null
-    },
-    {
-      "question": "Who are you?",
-      "answer": "I'm your friendly AI assistant built with love.",
-      "image": null,
-      "link": null
-    },
-    {
-      "question": "What is HTML?",
-      "answer": "HTML stands for HyperText Markup Language. It is used to create web pages.",
-      "image": "https://upload.wikimedia.org/wikipedia/commons/6/61/HTML5_logo_and_wordmark.svg",
-      "link": "https://developer.mozilla.org/en-US/docs/Web/HTML"
-    },
-    {
-      "question": "How to train this AI?",
-      "answer": "Go to the training page and enter a question and answer. It will be saved locally and synced with GitHub if you push.",
-      "image": null,
-      "link": null
-    }
-  ],
-  "chatHistory": [
-    {
-      "user": "admin",
-      "input": "Hello",
-      "response": "Hi there!"
-    },
-    {
-      "user": "guest",
-      "input": "What is 1 + 1?",
-      "response": "2"
-    },
-    {
-      "user": "guest",
-      "input": "Train AI",
-      "response": "Please enter your question and answer."
-    }
-  ]
+    "users": {},
+    "trainingData": [
+        {
+            "question": "What is JavaScript?",
+            "answer": "JavaScript is a programming language for dynamic web content.",
+            "image": "",
+            "link": "https://developer.mozilla.org/en-US/docs/Web/JavaScript",
+            "file": null
+        },
+        {
+            "question": "Prime Minister of India",
+            "answer": "Narendra Modi is the Prime Minister of India.",
+            "image": "https://via.placeholder.com/150?text=PM",
+            "link": "",
+            "file": null
+        },
+        {
+            "question": "1+1",
+            "answer": "2",
+            "image": "",
+            "link": "",
+            "file": null
+        },
+        {
+            "question": "Translate hello to Spanish",
+            "answer": "Hola",
+            "image": "",
+            "link": "",
+            "file": null
+        },
+        {
+            "question": "Weather in Delhi",
+            "answer": "Check current weather in Delhi.",
+            "image": "",
+            "link": "",
+            "file": null
+        }
+    ],
+    "chats": []
 }
