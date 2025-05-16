@@ -167,20 +167,103 @@
         initParticles();
         animateParticles();
 
+        // Image Error Handler
+        function handleImageError(img) {
+            try {
+                console.log('Image failed to load:', img.src);
+                img.src = 'https://via.placeholder.com/150?text=Image+Not+Found';
+            } catch (error) {
+                console.error('Image error handler:', error);
+            }
+        }
+
+        // Sanitize URL
+        function sanitizeUrl(url) {
+            try {
+                if (!url || typeof url !== 'string') return '';
+                return url.replace(/[<>"'&]/g, '');
+            } catch (error) {
+                console.error('Sanitize URL error:', error);
+                return '';
+            }
+        }
+
         // GitHub API Config
         let githubToken = localStorage.getItem('githubToken');
-        if (!githubToken) {
-            githubToken = prompt('Enter your GitHub Personal Access Token:');
-            if (githubToken) localStorage.setItem('githubToken', githubToken);
-        }
-        const repoOwner = '<sujen-alig>'; // Replace with your GitHub username
-        const repoName = '<suujchatbot>'; // Replace with your repo name
+        let repoOwner = '<YOUR_GITHUB_USERNAME>'; // Replace with your GitHub username
+        let repoName = '<YOUR_REPO_NAME>'; // Replace with your repo name
         const filePath = 'data.json';
-        const apiBaseUrl = `https://api.github.com/repos/${repoOwner}/${repoName}/contents/${filePath}`;
+        let apiBaseUrl = `https://api.github.com/repos/${repoOwner}/${repoName}/contents/${filePath}`;
+
+        // Prompt for GitHub configuration if not set
+        function configureGitHub() {
+            if (repoOwner.includes('<YOUR_GITHUB_USERNAME>') || repoName.includes('<YOUR_REPO_NAME>')) {
+                repoOwner = prompt('Enter your GitHub username:');
+                repoName = prompt('Enter your repository name:');
+                if (!repoOwner || !repoName) {
+                    alert('GitHub username and repository name are required. Please reload and try again.');
+                    throw new Error('Missing GitHub configuration');
+                }
+                apiBaseUrl = `https://api.github.com/repos/${repoOwner}/${repoName}/contents/${filePath}`;
+            }
+            if (!githubToken) {
+                githubToken = prompt('Enter your GitHub Personal Access Token (must have repo scope):');
+                if (!githubToken) {
+                    alert('GitHub token is required. Please reload and try again.');
+                    throw new Error('Missing GitHub token');
+                }
+                localStorage.setItem('githubToken', githubToken);
+            }
+        }
+
+        configureGitHub();
+
+        // Validate repository configuration
+        async function validateRepo(retry = true) {
+            try {
+                const response = await fetch(`https://api.github.com/repos/${repoOwner}/${repoName}`, {
+                    headers: {
+                        'Authorization': `Bearer ${githubToken}`,
+                        'Accept': 'application/vnd.github.v3+json'
+                    }
+                });
+                if (!response.ok) {
+                    let errorMessage = 'Repository validation failed';
+                    let errorData;
+                    try {
+                        errorData = await response.json();
+                        errorMessage = errorData.message || errorMessage;
+                    } catch {
+                        errorMessage += `: HTTP ${response.status}`;
+                    }
+                    if (response.status === 401) {
+                        errorMessage = 'Invalid GitHub token. Please provide a token with repo scope.';
+                        if (retry) {
+                            localStorage.removeItem('githubToken');
+                            githubToken = prompt('Enter a valid GitHub Personal Access Token with repo scope:');
+                            if (!githubToken) throw new Error('No token provided');
+                            localStorage.setItem('githubToken', githubToken);
+                            return validateRepo(false);
+                        }
+                    } else if (response.status === 403) {
+                        errorMessage = 'Permission denied. Ensure token has repo scope and you have write access.';
+                    } else if (response.status === 404) {
+                        errorMessage = `Repository not found: ${repoOwner}/${repoName}. Check username and repository name.`;
+                    }
+                    throw new Error(errorMessage);
+                }
+                console.log('Repository validated successfully');
+                return true;
+            } catch (error) {
+                console.error('Repository validation error:', error.message, error.stack);
+                alert(`Invalid repository or token: ${error.message}. Please check repoOwner, repoName, and token.`);
+                return false;
+            }
+        }
 
         // IndexedDB Setup
         let db;
-        const request = indexedDB.open('ChatbotDB', 3);
+        const request = indexedDB.open('ChatbotDB', 7);
         request.onupgradeneeded = event => {
             db = event.target.result;
             if (!db.objectStoreNames.contains('users')) {
@@ -188,7 +271,6 @@
             }
             if (!db.objectStoreNames.contains('trainingData')) {
                 const trainingDataStore = db.createObjectStore('trainingData', { autoIncrement: true });
-                // Pre-populate with 90% training data
                 const preTrainingData = [
                     { question: "What is JavaScript?", answer: "JavaScript is a programming language for dynamic web content.", image: "", link: "https://developer.mozilla.org/en-US/docs/Web/JavaScript", file: null },
                     { question: "Prime Minister of India", answer: "Narendra Modi is the Prime Minister of India.", image: "https://via.placeholder.com/150?text=PM", link: "", file: null },
@@ -208,6 +290,7 @@
         };
         request.onerror = event => {
             console.error('IndexedDB error:', event.target.error);
+            alert('Failed to initialize local storage');
         };
 
         // Authentication
@@ -270,17 +353,21 @@
         // Data Sync (GitHub API)
         async function syncData(action) {
             try {
+                if (!(await validateRepo())) return;
                 if (action === 'pull') {
                     const response = await fetch(apiBaseUrl, {
-                        headers: { 'Authorization': `Bearer ${githubToken}`, 'Accept': 'application/vnd.github.v3+json' }
+                        headers: {
+                            'Authorization': `Bearer ${githubToken}`,
+                            'Accept': 'application/vnd.github.v3+json'
+                        }
                     });
                     if (!response.ok) {
                         if (response.status === 404) {
-                            // Create data.json if it doesn't exist
                             await createDataJson();
                             return syncData('pull');
                         }
-                        throw new Error('Failed to fetch data.json');
+                        const errorData = await response.json();
+                        throw new Error(`Failed to fetch data.json: ${errorData.message || 'Unknown error'}`);
                     }
                     const data = await response.json();
                     const content = JSON.parse(atob(data.content));
@@ -314,9 +401,12 @@
                         trainingData,
                         chats
                     };
-                    const base64Content = btoa(JSON.stringify(data, null, 2));
+                    const base64Content = btoa(unescape(encodeURIComponent(JSON.stringify(data, null, 2))));
                     const shaResponse = await fetch(apiBaseUrl, {
-                        headers: { 'Authorization': `Bearer ${githubToken}`, 'Accept': 'application/vnd.github.v3+json' }
+                        headers: {
+                            'Authorization': `Bearer ${githubToken}`,
+                            'Accept': 'application/vnd.github.v3+json'
+                        }
                     });
                     let sha;
                     if (shaResponse.ok) {
@@ -335,7 +425,10 @@
                             sha: sha
                         })
                     });
-                    if (!response.ok) throw new Error('Failed to update data.json');
+                    if (!response.ok) {
+                        const errorData = await response.json();
+                        throw new Error(`Failed to update data.json: ${errorData.message || 'Unknown error'}`);
+                    }
                     console.log('Data pushed to GitHub');
                 }
             } catch (error) {
@@ -345,8 +438,11 @@
         }
 
         // Create data.json if it doesn't exist
-        async function createDataJson() {
+        async function createDataJson(retry = true) {
             try {
+                if (!(await validateRepo(retry))) {
+                    throw new Error('Repository validation failed');
+                }
                 const initialData = {
                     users: {},
                     trainingData: [
@@ -358,7 +454,7 @@
                     ],
                     chats: []
                 };
-                const base64Content = btoa(JSON.stringify(initialData, null, 2));
+                const base64Content = btoa(unescape(encodeURIComponent(JSON.stringify(initialData, null, 2))));
                 const response = await fetch(apiBaseUrl, {
                     method: 'PUT',
                     headers: {
@@ -371,11 +467,33 @@
                         content: base64Content
                     })
                 });
-                if (!response.ok) throw new Error('Failed to create data.json');
-                console.log('data.json created');
+                if (!response.ok) {
+                    let errorMessage = 'Failed to create data.json';
+                    let errorData;
+                    try {
+                        errorData = await response.json();
+                        errorMessage = errorData.message || errorMessage;
+                    } catch {
+                        errorMessage += `: HTTP ${response.status}`;
+                    }
+                    if (response.status === 401 && retry) {
+                        localStorage.removeItem('githubToken');
+                        githubToken = prompt('Enter a valid GitHub Personal Access Token with repo scope:');
+                        if (!githubToken) throw new Error('No token provided');
+                        localStorage.setItem('githubToken', githubToken);
+                        return createDataJson(false);
+                    } else if (response.status === 403) {
+                        errorMessage = 'Permission denied. Ensure token has repo scope and you have write access.';
+                    } else if (response.status === 404) {
+                        errorMessage = `Repository not found: ${repoOwner}/${repoName}. Check username and repository name.`;
+                    }
+                    throw new Error(errorMessage);
+                }
+                console.log('data.json created successfully');
             } catch (error) {
                 console.error('Create data.json error:', error);
                 alert('Failed to create data.json: ' + error.message);
+                throw error;
             }
         }
 
@@ -461,9 +579,9 @@
                     row.innerHTML = `
                         <td>${data.question}</td>
                         <td>${data.answer}</td>
-                        <td>${data.image ? `<img src="${data.image}" alt="Image" class="w-16 rounded">` : 'N/A'}</td>
-                        <td>${data.link ? `<a href="${data.link}" target="_blank" class="text-blue-500 hover:underline">Link</a>` : 'N/A'}</td>
-                        <td>${data.file ? (data.file.type.startsWith('image/') ? `<img src="${data.file.content}" alt="File" class="w-16 rounded">` : `<a href="${data.file.content}" download>File</a>`) : 'N/A'}</td>
+                        <td>${data.image ? `<img src="${sanitizeUrl(data.image)}" alt="Image" class="w-16 rounded" onerror="handleImageError(this)">` : 'N/A'}</td>
+                        <td>${data.link ? `<a href="${sanitizeUrl(data.link)}" target="_blank" class="text-blue-500 hover:underline">Link</a>` : 'N/A'}</td>
+                        <td>${data.file ? (data.file.type.startsWith('image/') ? `<img src="${sanitizeUrl(data.file.content)}" alt="File" class="w-16 rounded" onerror="handleImageError(this)">` : `<a href="${sanitizeUrl(data.file.content)}" download>File</a>`) : 'N/A'}</td>
                     `;
                     tbody.appendChild(row);
                 });
@@ -516,13 +634,13 @@
 
                 if (matchedData) {
                     response = matchedData.answer;
-                    if (matchedData.image) response += `<br><img src="${matchedData.image}" alt="Image" class="w-32 rounded">`;
-                    if (matchedData.link) response += `<br><a href="${matchedData.link}" target="_blank" class="text-blue-500 hover:underline">Learn More</a>`;
-                    if (matchedData.file) response += `<br>File: ${matchedData.file.type.startsWith('image/') ? `<img src="${data.file.content}" alt="File" class="w-32 rounded">` : `<a href="${data.file.content}" download>File</a>`}`;
+                    if (matchedData.image) response += `<br><img src="${sanitizeUrl(matchedData.image)}" alt="Image" class="w-32 rounded" onerror="handleImageError(this)">`;
+                    if (matchedData.link) response += `<br><a href="${sanitizeUrl(matchedData.link)}" target="_blank" class="text-blue-500 hover:underline">Learn More</a>`;
+                    if (matchedData.file) response += `<br>File: ${matchedData.file.type.startsWith('image/') ? `<img src="${sanitizeUrl(matchedData.file.content)}" alt="File" class="w-32 rounded" onerror="handleImageError(this)">` : `<a href="${sanitizeUrl(matchedData.file.content)}" download>File</a>`}`;
                 } else if (input.includes('how are you')) {
                     response = "I'm doing fantastic, thanks for asking! What's on your mind? 😄";
                 } else if (input.includes('prime minister of india')) {
-                    response = await fetchWikipedia('Narendra Modi', true) || 'The Prime Minister of India is Narendra Modi. <br><img src="https://via.placeholder.com/150?text=PM" alt="PM Image" class="w-32 rounded">';
+                    response = await fetchWikipedia('Narendra Modi', true) || `The Prime Minister of India is Narendra Modi. <br><img src="https://via.placeholder.com/150?text=PM" alt="PM Image" class="w-32 rounded" onerror="handleImageError(this)">`;
                 } else if (input.includes('about javascript')) {
                     response = 'JavaScript is a powerful programming language used for web development, enabling dynamic content and interactivity. <br><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript" target="_blank" class="text-blue-500 hover:underline">Learn More</a>';
                 } else if (input.includes('create a login page')) {
@@ -555,7 +673,7 @@ function Login() {
             placeholder="Password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            className="border p-2 mb-3 w-full rounded"
+            class="border p-2 mb-3 w-full rounded"
           />
           <button type="submit" className="bg-blue-500 text-white p-2 rounded w-full">
             Login
@@ -714,11 +832,11 @@ const todoApp = new TodoApp();
                 if (data.extract) {
                     let result = data.extract;
                     if (isPerson && data.thumbnail) {
-                        result += `<br><img src="${data.thumbnail.source}" alt="${query}" class="w-32 rounded">`;
+                        result += `<br><img src="${sanitizeUrl(data.thumbnail.source)}" alt="${query}" class="w-32 rounded" onerror="handleImageError(this)">`;
                     } else if (!isPerson && data.thumbnail) {
-                        result += `<br><img src="${data.thumbnail.source}" alt="${query}" class="w-32 rounded">`;
+                        result += `<br><img src="${sanitizeUrl(data.thumbnail.source)}" alt="${query}" class="w-32 rounded" onerror="handleImageError(this)">`;
                     } else if (isPerson) {
-                        result += `<br><img src="https://via.placeholder.com/150?text=${query}" alt="${query}" class="w-32 rounded">`;
+                        result += `<br><img src="https://via.placeholder.com/150?text=${encodeURIComponent(query)}" alt="${query}" class="w-32 rounded" onerror="handleImageError(this)">`;
                     }
                     return result;
                 }
@@ -734,7 +852,7 @@ const todoApp = new TodoApp();
                 const response = await fetch(`https://api.duckduckgo.com/?q=${encodeURIComponent(query)}&format=json`);
                 const data = await response.json();
                 if (data.Abstract) {
-                    return `${data.Abstract} <br><a href="${data.AbstractURL}" target="_blank" class="text-blue-500 hover:underline">Read More</a>`;
+                    return `${data.Abstract} <br><a href="${sanitizeUrl(data.AbstractURL)}" target="_blank" class="text-blue-500 hover:underline">Read More</a>`;
                 }
                 return null;
             } catch {
@@ -941,11 +1059,16 @@ const todoApp = new TodoApp();
 
         // Service Worker Registration
         if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('/sw.js').then(reg => {
-                console.log('Service Worker registered', reg);
-            }).catch(err => {
-                console.error('Service Worker registration failed', err);
-            });
+            navigator.serviceWorker.register('./sw.js', { scope: '/' })
+                .then(reg => {
+                    console.log('Service Worker registered successfully', reg);
+                })
+                .catch(err => {
+                    console.error('Service Worker registration failed:', err);
+                    console.error('Error details:', err.message, err.stack);
+                });
+        } else {
+            console.warn('Service Worker not supported in this browser');
         }
     </script>
 </body>
