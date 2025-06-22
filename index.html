@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>DDoS Test & Detection Page</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    body {
+      background-color: #0f172a;
+      color: #f8fafc;
+      font-family: 'Segoe UI', sans-serif;
+      padding: 30px;
+      max-width: 800px;
+      margin: auto;
+    }
+    h1 {
+      color: #22d3ee;
+    }
+    input, button {
+      padding: 10px;
+      margin-top: 10px;
+      width: 100%;
+      font-size: 16px;
+      border-radius: 5px;
+      border: none;
+    }
+    button {
+      background-color: #22c55e;
+      color: white;
+      cursor: pointer;
+    }
+    #log {
+      margin-top: 20px;
+      background: #1e293b;
+      padding: 15px;
+      border-radius: 5px;
+      max-height: 300px;
+      overflow-y: auto;
+      font-family: monospace;
+    }
+    .alert {
+      background-color: #dc2626;
+      padding: 10px;
+      margin-top: 20px;
+      border-radius: 5px;
+      color: white;
+    }
+  </style>
+</head>
+<body>
+  <h1>⚡ DDoS Tester & Detection Panel</h1>
+  <p>This tool is for self-owned sites only. Use responsibly.</p>
+
+  <label>Target URL</label>
+  <input type="text" id="targetURL" value="https://example.com">
+
+  <label>Number of Requests</label>
+  <input type="number" id="requestCount" value="50">
+
+  <button onclick="startLoad()">🚀 Start Load Test</button>
+
+  <div id="log"></div>
+  <div id="alertBox"></div>
+
+  <script>
+    let requestTimestamps = [];
+    const floodThreshold = 30; // 30 requests within 10 seconds
+
+    async function startLoad() {
+      const url = document.getElementById("targetURL").value;
+      const count = parseInt(document.getElementById("requestCount").value);
+      const log = document.getElementById("log");
+      const alertBox = document.getElementById("alertBox");
+      requestTimestamps = [];
+      log.innerHTML = "";
+      alertBox.innerHTML = "";
+
+      for (let i = 1; i <= count; i++) {
+        log.innerHTML += `⏳ Sending request ${i}...<br>`;
+        log.scrollTop = log.scrollHeight;
+        trackRequest();
+
+        try {
+          const res = await fetch(url);
+          log.innerHTML += `✅ Request ${i}: ${res.status}<br>`;
+        } catch (err) {
+          log.innerHTML += `❌ Request ${i}: Failed (${err})<br>`;
+        }
+
+        if (detectFlood()) {
+          alertBox.innerHTML = `<div class="alert">🚨 Potential DDoS Detected from this browser!</div>`;
+          break;
+        }
+      }
+
+      getClientInfo();
+    }
+
+    function trackRequest() {
+      const now = Date.now();
+      requestTimestamps.push(now);
+      requestTimestamps = requestTimestamps.filter(t => now - t < 10000); // last 10 sec
+    }
+
+    function detectFlood() {
+      return requestTimestamps.length > floodThreshold;
+    }
+
+    async function getClientInfo() {
+      try {
+        const res = await fetch("https://api.ipify.org/?format=json");
+        const data = await res.json();
+        const browser = navigator.userAgent;
+        const log = document.getElementById("log");
+        log.innerHTML += `<br>🔎 Visitor IP: ${data.ip}<br>`;
+        log.innerHTML += `🧠 Browser: ${browser}<br>`;
+      } catch (e) {
+        document.getElementById("log").innerHTML += `<br>⚠️ Failed to fetch IP<br>`;
+      }
+    }
+  </script>
+</body>
+</html>
